@@ -1,11 +1,13 @@
 # Custom vLLM build for GB10 (compute 12.1) on DGX Spark
-FROM nvcr.io/nvidia/pytorch:25.12-py3
+# Base: NVIDIA vLLM container (includes Spark-specific CUDA/Triton/LLVM patches)
+FROM nvcr.io/nvidia/vllm:25.12.post1-py3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Build tools for compiling vLLM from source
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git build-essential cmake ninja-build python3-dev pkg-config \
       libssl-dev libffi-dev curl ca-certificates \
@@ -17,7 +19,7 @@ WORKDIR /opt/vllm
 ARG VLLM_COMMIT=main
 RUN git fetch --all && git checkout ${VLLM_COMMIT}
 
-# Install build + runtime deps, but keep container's CUDA-enabled torch.
+# Install build + runtime deps without overwriting CUDA-enabled torch in base image.
 RUN pip install -U pip setuptools wheel setuptools_scm \
     && grep -vE '^(torch|torchaudio|torchvision)' requirements/build.txt > /tmp/req_build.txt \
     && grep -vE '^(torch|torchaudio|torchvision)' requirements/common.txt > /tmp/req_common.txt \
